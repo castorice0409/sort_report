@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <title>氣泡排序動畫</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+        }
+        #container {
+            display: flex;
+            align-items: flex-end;
+            height: 300px;
+            width: 80%;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+        .bar {
+            background-color: #4CAF50;
+            margin: 0 2px;
+            width: 20px;
+            transition: height 0.3s, background-color 0.3s;
+        }
+        .bar.active {
+            background-color: #f44336;
+        }
+    </style>
+</head>
+<body>
+    <h1>氣泡排序法 (Bubble Sort) 動畫示範</h1>
+    <div id="container"></div>
+    <button id="start">開始排序</button>
+    <script>
+        const container = document.getElementById('container');
+        const startBtn = document.getElementById('start');
+
+        // 產生隨機資料
+        let data = [];
+        function generateData(count = 20) {
+            data = Array.from({ length: count }, () => Math.floor(Math.random() * 100) + 10);
+        }
+
+        function renderBars() {
+            container.innerHTML = '';
+            data.forEach(value => {
+                const bar = document.createElement('div');
+                bar.classList.add('bar');
+                bar.style.height = value * 2 + 'px';
+                container.appendChild(bar);
+            });
+        }
+
+        // 氣泡排序並動畫
+        async function bubbleSortAnimation() {
+            const bars = container.children;
+            let n = data.length;
+            for (let i = 0; i < n - 1; i++) {
+                for (let j = 0; j < n - i - 1; j++) {
+                    bars[j].classList.add('active');
+                    bars[j + 1].classList.add('active');
+                    await sleep(300);
+                    if (data[j] > data[j + 1]) {
+                        // 交換數值與高度
+                        [data[j], data[j + 1]] = [data[j + 1], data[j]];
+                        bars[j].style.height = data[j] * 2 + 'px';
+                        bars[j + 1].style.height = data[j + 1] * 2 + 'px';
+                    }
+                    bars[j].classList.remove('active');
+                    bars[j + 1].classList.remove('active');
+                }
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        startBtn.addEventListener('click', async () => {
+            startBtn.disabled = true;
+            await bubbleSortAnimation();
+            startBtn.disabled = false;
+        });
+
+        generateData();
+        renderBars();
+    </script>
+</body>
+</html>
