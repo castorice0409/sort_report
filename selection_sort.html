@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8" />
+    <title>選擇排序動畫</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 20px;
+        }
+        #container {
+            display: flex;
+            align-items: flex-end;
+            height: 300px;
+            width: 80%;
+            border: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+        .bar {
+            background-color: #4CAF50;
+            margin: 0 2px;
+            width: 20px;
+            transition: height 0.3s, background-color 0.3s;
+        }
+        .bar.active {
+            background-color: #f44336;
+        }
+        .bar.min {
+            background-color: #ff9800;
+        }
+        #inputContainer {
+            margin-bottom: 20px;
+        }
+        #inputContainer input {
+            width: 300px;
+            padding: 5px;
+        }
+        #inputContainer button {
+            padding: 5px 10px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>選擇排序法 (Selection Sort) 動畫示範</h1>
+    <div id="inputContainer">
+        <label for="dataInput">輸入數組元素 (用逗號分隔):</label><br>
+        <input type="text" id="dataInput" placeholder="例如: 64,34,25,12,22,11,90">
+        <button id="updateBtn">更新數組</button>
+    </div>
+    <div id="container"></div>
+    <button id="start">開始排序</button>
+    <script>
+        const container = document.getElementById('container');
+        const startBtn = document.getElementById('start');
+        const updateBtn = document.getElementById('updateBtn');
+        const dataInput = document.getElementById('dataInput');
+
+        // 初始資料
+        let data = [64, 34, 25, 12, 22, 11, 90];
+
+        function renderBars() {
+            container.innerHTML = '';
+            data.forEach((value, index) => {
+                const bar = document.createElement('div');
+                bar.classList.add('bar');
+                bar.style.height = value * 2 + 'px';
+                bar.setAttribute('data-index', index);
+                container.appendChild(bar);
+            });
+        }
+
+        // 更新數組
+        updateBtn.addEventListener('click', () => {
+            const input = dataInput.value.trim();
+            if (input) {
+                const newData = input.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+                if (newData.length > 0) {
+                    data = newData;
+                    renderBars();
+                } else {
+                    alert('請輸入有效的數字，用逗號分隔。');
+                }
+            }
+        });
+
+        // 選擇排序並動畫
+        async function selectionSortAnimation() {
+            const bars = container.children;
+            let n = data.length;
+            for (let i = 0; i < n - 1; i++) {
+                let minIdx = i;
+                bars[minIdx].classList.add('min');
+                for (let j = i + 1; j < n; j++) {
+                    bars[j].classList.add('active');
+                    await sleep(300);
+                    if (data[j] < data[minIdx]) {
+                        bars[minIdx].classList.remove('min');
+                        minIdx = j;
+                        bars[minIdx].classList.add('min');
+                    }
+                    bars[j].classList.remove('active');
+                }
+                if (minIdx !== i) {
+                    // 交換數值與高度
+                    [data[i], data[minIdx]] = [data[minIdx], data[i]];
+                    bars[i].style.height = data[i] * 2 + 'px';
+                    bars[minIdx].style.height = data[minIdx] * 2 + 'px';
+                }
+                bars[minIdx].classList.remove('min');
+            }
+        }
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        startBtn.addEventListener('click', async () => {
+            startBtn.disabled = true;
+            await selectionSortAnimation();
+            startBtn.disabled = false;
+        });
+
+        // 初始化
+        dataInput.value = data.join(',');
+        renderBars();
+    </script>
+</body>
+</html>
