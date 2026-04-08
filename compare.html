@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>排序演算法大競賽</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f0f2f5; margin: 0; padding: 20px; }
+        .header { text-align: center; margin-bottom: 20px; }
+        .controls { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        button { padding: 8px 16px; font-size: 16px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 4px; }
+        button:disabled { background-color: #ccc; cursor: not-allowed; }
+        .race-track { display: flex; flex-direction: column; gap: 10px; }
+        .algorithm-row { display: flex; align-items: center; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .info { width: 150px; font-weight: bold; }
+        .stats { width: 120px; font-size: 12px; color: #555; }
+        canvas { flex-grow: 1; height: 80px; background: #fafafa; border: 1px solid #eee; border-radius: 4px; margin: 0 10px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h2>排序演算法時間複雜度比較</h2>
+    </div>
+
+    <div class="controls">
+        <label>資料數量 (N): <input type="number" id="arrSize" value="60" min="10" max="200" step="10"></label>
+        <label>動畫速度 (毫秒): <input type="number" id="speed" value="10" min="1" max="100"></label>
+        <button id="genBtn" onclick="initAll()">產生新陣列</button>
+        <button id="startBtn" onclick="startRace()">開始競賽</button>
+    </div>
+
+    <div class="race-track" id="track">
+        </div>
+
+    <script>
+        const algorithms = [
+            { id: 'bubble', name: '氣泡排序 (Bubble)', func: bubbleSort },
+            { id: 'insertion', name: '插入排序 (Insertion)', func: insertionSort },
+            { id: 'selection', name: '選擇排序 (Selection)', func: selectionSort },
+            { id: 'merge', name: '合併排序 (Merge)', func: mergeSortWrapper },
+            { id: 'heap', name: '堆積排序 (Heap)', func: heapSort }
+        ];
+
+        let baseArray = [];
+        let states = {};
+        let isRacing = false;
+
+        // 產生 DOM 元素
+        const track = document.getElementById('track');
+        algorithms.forEach(alg => {
+            track.innerHTML += `
+                <div class="algorithm-row" id="row-${alg.id}">
+                    <div class="info">${alg.name}</div>
+                    <canvas id="canvas-${alg.id}" width="600" height="80"></canvas>
+                    <div class="stats" id="stats-${alg.id}">等待中...</div>
+                </div>
+            `;
+            states[alg.id] = { array: [], ops: 0, ctx: null, canvas: null };
+        });
+
+        // 初始化
+        function initAll() {
+            if (isRacing) return;
+            const size = parseInt(document.getElementById('arrSize').value);
+            baseArray = Array.from({length: size}, () => Math.floor(Math.random() * 80) + 5);
+            
+            algorithms.forEach(alg => {
+                const s = states[alg.id];
+                s.array = [...baseArray]; // 每個演算法拿到完全一樣的拷貝
+                s.ops = 0;
+                s.canvas = document.getElementById(`canvas-${alg.id}`);
+                s.ctx = s.canvas.getContext('2d');
+                document.getElementById(`stats-${alg.id}`).innerText = "等待中...";
+                document.getElementById(`row-${alg.id}`).style.borderLeft = "5px solid transparent";
+                drawArray(alg.id);
+            });
+        }
+
+        function drawArray(id, activeIdx = -1) {
+            const s = states[id];
+            const width = s.canvas.width / s.array.length;
+            s.ctx.clearRect(0, 0, s.canvas.width, s.canvas.height);
+            
+            s.array.forEach((val, i) => {
+                s.ctx.fillStyle = i === activeIdx ? '#ff4757' : '#2ed573';
+                s.ctx.fillRect(i * width, s.canvas.height - val, width - 1, val);
+            });
+        }
+
+        const sleep = () => new Promise(r => setTimeout(r, parseInt(document.getElementById('speed').value)));
+
+        async function startRace() {
+            if (isRacing) return;
+            isRacing = true;
+            document.getElementById('genBtn').disabled = true;
+            document.getElementById('startBtn').disabled = true;
+
+            // 同時觸發所有排序演算法
+            const promises = algorithms.map(alg => alg.func(alg.id));
+            await Promise.all(promises);
+
+            isRacing = false;
+            document.getElementById('genBtn').disabled = false;
+            document.getElementById('startBtn').disabled = false;
+        }
+
+        function updateStats(id, text) {
+            document.getElementById(`stats-${id}`).innerText = `操作: ${states[id].ops}\n${text}`;
+        }
+
+        // ================= 演算法實作區 =================
+
+        async function bubbleSort(id) {
+            let arr = states[id].array;
+            let n = arr.length;
+            for (let i = 0; i < n - 1; i++) {
+                for (let j = 0; j < n - i - 1; j++) {
+                    states[id].ops++;
+                    if (arr[j] > arr[j + 1]) {
+                        [arr[j], arr[j+1]] = [arr[j+1], arr[j]];
+                        drawArray(id, j+1);
+                        await sleep();
+                    }
+                }
+                updateStats(id, "執行中...");
+            }
+            drawArray(id);
+            updateStats(id, "完成！");
+            document.getElementById(`row-${id}`).style.borderLeft = "5px solid #2ed573";
+        }
+
+        async function insertionSort(id) {
+            let arr = states[id].array;
+            for (let i = 1; i < arr.length; i++) {
+                let key = arr[i];
+                let j = i - 1;
+                while (j >= 0 && arr[j] > key) {
+                    states[id].ops++;
+                    arr[j + 1] = arr[j];
+                    j = j - 1;
+                    drawArray(id, j+1);
+                    await sleep();
+                }
+                arr[j + 1] = key;
+                updateStats(id, "執行中...");
+            }
+            drawArray(id);
+            updateStats(id, "完成！");
+            document.getElementById(`row-${id}`).style.borderLeft = "5px solid #2ed573";
+        }
+
+        async function selectionSort(id) {
+            let arr = states[id].array;
+            for (let i = 0; i < arr.length; i++) {
+                let minIdx = i;
+                for (let j = i + 1; j < arr.length; j++) {
+                    states[id].ops++;
+                    if (arr[j] < arr[minIdx]) minIdx = j;
+                }
+                if (minIdx !== i) {
+                    [arr[i], arr[minIdx]] = [arr[minIdx], arr[i]];
+                    drawArray(id, i);
+                    await sleep();
+                }
+                updateStats(id, "執行中...");
+            }
+            drawArray(id);
+            updateStats(id, "完成！");
+            document.getElementById(`row-${id}`).style.borderLeft = "5px solid #2ed573";
+        }
+
+        async function mergeSortWrapper(id) {
+            let arr = states[id].array;
+            await mergeSort(arr, 0, arr.length - 1, id);
+            drawArray(id);
+            updateStats(id, "完成！");
+            document.getElementById(`row-${id}`).style.borderLeft = "5px solid #2ed573";
+        }
+
+        async function mergeSort(arr, l, r, id) {
+            if (l >= r) return;
+            const m = l + Math.floor((r - l) / 2);
+            await mergeSort(arr, l, m, id);
+            await mergeSort(arr, m + 1, r, id);
+            await merge(arr, l, m, r, id);
+        }
+
+        async function merge(arr, l, m, r, id) {
+            let n1 = m - l + 1; let n2 = r - m;
+            let L = arr.slice(l, m + 1);
+            let R = arr.slice(m + 1, r + 1);
+            let i = 0, j = 0, k = l;
+            while (i < n1 && j < n2) {
+                states[id].ops++;
+                if (L[i] <= R[j]) { arr[k] = L[i]; i++; } 
+                else { arr[k] = R[j]; j++; }
+                drawArray(id, k);
+                await sleep();
+                k++;
+                updateStats(id, "執行中...");
+            }
+            while (i < n1) { states[id].ops++; arr[k++] = L[i++]; drawArray(id, k-1); await sleep(); }
+            while (j < n2) { states[id].ops++; arr[k++] = R[j++]; drawArray(id, k-1); await sleep(); }
+        }
+
+        async function heapSort(id) {
+            let arr = states[id].array;
+            let n = arr.length;
+            for (let i = Math.floor(n / 2) - 1; i >= 0; i--) await heapify(arr, n, i, id);
+            for (let i = n - 1; i > 0; i--) {
+                states[id].ops++;
+                [arr[0], arr[i]] = [arr[i], arr[0]];
+                drawArray(id, i);
+                await sleep();
+                await heapify(arr, i, 0, id);
+                updateStats(id, "執行中...");
+            }
+            drawArray(id);
+            updateStats(id, "完成！");
+            document.getElementById(`row-${id}`).style.borderLeft = "5px solid #2ed573";
+        }
+
+        async function heapify(arr, n, i, id) {
+            let largest = i; let l = 2 * i + 1; let r = 2 * i + 2;
+            states[id].ops++;
+            if (l < n && arr[l] > arr[largest]) largest = l;
+            if (r < n && arr[r] > arr[largest]) largest = r;
+            if (largest != i) {
+                [arr[i], arr[largest]] = [arr[largest], arr[i]];
+                drawArray(id, largest);
+                await sleep();
+                await heapify(arr, n, largest, id);
+            }
+        }
+
+        // 啟動產生初始陣列
+        window.onload = initAll;
+    </script>
+</body>
+</html>
