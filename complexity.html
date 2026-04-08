@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>排序演算法複雜度動畫</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
+        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 800px; }
+        .controls { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
+        button { padding: 10px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 6px; font-weight: bold; transition: 0.2s; }
+        .btn-time { background-color: #ffeaa7; color: #d63031; border: 2px solid #d63031; }
+        .btn-space { background-color: #81ecec; color: #0984e3; border: 2px solid #0984e3; }
+        button:hover { filter: brightness(0.9); }
+        .layout { display: flex; gap: 20px; }
+        canvas { background: #fff; border: 1px solid #dfe6e9; border-radius: 8px; }
+        .legend { flex-grow: 1; padding: 15px; background: #fdfbfb; border-radius: 8px; border: 1px solid #eee; }
+        .legend h3 { margin-top: 0; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
+        .legend-item { margin-bottom: 15px; line-height: 1.5; }
+        .color-box { display: inline-block; width: 16px; height: 16px; margin-right: 8px; vertical-align: middle; border-radius: 3px; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2 style="text-align: center;">時間與空間複雜度成長曲線 (Big-O)</h2>
+        
+        <div class="controls">
+            <button class="btn-time" onclick="playTimeComplexity()">▶ 播放時間複雜度動畫</button>
+            <button class="btn-space" onclick="playSpaceComplexity()">▶ 播放空間複雜度動畫</button>
+        </div>
+
+        <div class="layout">
+            <canvas id="graphCanvas" width="500" height="400"></canvas>
+            
+            <div class="legend" id="legendBox">
+                <h3>請點擊上方按鈕開始動畫</h3>
+                <p>這裡將顯示演算法與曲線的對應關係。</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('graphCanvas');
+        const ctx = canvas.getContext('2d');
+        const legendBox = document.getElementById('legendBox');
+        let animationId;
+
+        const maxN = 100; // X軸最大資料量
+        
+        // 繪製座標軸
+        function drawAxes(yMax, yLabel) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.strokeStyle = '#2d3436';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            
+            // Y軸
+            ctx.moveTo(50, 20);
+            ctx.lineTo(50, canvas.height - 40);
+            // X軸
+            ctx.lineTo(canvas.width - 20, canvas.height - 40);
+            ctx.stroke();
+
+            // 標籤
+            ctx.fillStyle = '#2d3436';
+            ctx.font = '14px Arial';
+            ctx.fillText("資料量 (N)", canvas.width / 2, canvas.height - 10);
+            
+            ctx.save();
+            ctx.translate(20, canvas.height / 2 + 50);
+            ctx.rotate(-Math.PI / 2);
+            ctx.fillText(yLabel, 0, 0);
+            ctx.restore();
+
+            // 刻度
+            ctx.fillText("0", 35, canvas.height - 25);
+            ctx.fillText(maxN, canvas.width - 30, canvas.height - 20);
+        }
+
+        // 動畫繪製曲線
+        function animateCurves(curves, yMax, yLabel) {
+            cancelAnimationFrame(animationId);
+            drawAxes(yMax, yLabel);
+
+            let currentN = 1;
+            const drawOriginX = 50;
+            const drawOriginY = canvas.height - 40;
+            const scaleX = (canvas.width - 70) / maxN;
+            const scaleY = (canvas.height - 60) / yMax;
+
+            function draw() {
+                if (currentN > maxN) return;
+
+                curves.forEach(curve => {
+                    ctx.strokeStyle = curve.color;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    
+                    // 從上一個點連到目前點
+                    let prevVal = curve.fn(currentN - 1);
+                    let currVal = curve.fn(currentN);
+                    
+                    ctx.moveTo(drawOriginX + (currentN - 1) * scaleX, drawOriginY - prevVal * scaleY);
+                    ctx.lineTo(drawOriginX + currentN * scaleX, drawOriginY - currVal * scaleY);
+                    ctx.stroke();
+                });
+
+                currentN += 0.5; // 動畫速度
+                animationId = requestAnimationFrame(draw);
+            }
+            draw();
+        }
+
+        function playTimeComplexity() {
+            // Y軸最大值設定為 100^2 = 10000
+            const yMax = Math.pow(maxN, 2); 
+            
+            legendBox.innerHTML = `
+                <h3>時間複雜度 (Time Complexity)</h3>
+                <div class="legend-item">
+                    <span class="color-box" style="background:#d63031;"></span>
+                    <b>O(n²) 拋物線</b><br>
+                    氣泡排序、插入排序、選擇排序<br>
+                    <small>資料量變大時，耗時會呈現恐怖的倍數成長。</small>
+                </div>
+                <div class="legend-item">
+                    <span class="color-box" style="background:#0984e3;"></span>
+                    <b>O(n log n
