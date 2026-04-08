@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>合併排序法動畫</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f4f4f9;
+            margin: 0;
+            padding: 20px;
+        }
+        .controls {
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        button, input {
+            margin: 0 10px;
+            padding: 8px 12px;
+            font-size: 16px;
+        }
+        button {
+            cursor: pointer;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        canvas {
+            background: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <button id="generateBtn" onclick="generateArray()">產生新陣列</button>
+        <button id="sortBtn" onclick="startMergeSort()">開始排序</button>
+        <label for="speedSlider">動畫速度: </label>
+        <input type="range" id="speedSlider" min="10" max="500" value="50" dir="rtl">
+    </div>
+
+    <canvas id="sortCanvas" width="800" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('sortCanvas');
+        const ctx = canvas.getContext('2d');
+        const generateBtn = document.getElementById('generateBtn');
+        const sortBtn = document.getElementById('sortBtn');
+        const speedSlider = document.getElementById('speedSlider');
+
+        let array = [];
+        const arraySize = 50;
+        let isSorting = false;
+
+        // 初始化產生陣列
+        function generateArray() {
+            if (isSorting) return;
+            array = [];
+            for (let i = 0; i < arraySize; i++) {
+                // 產生 10 到 350 之間的隨機高度
+                array.push(Math.floor(Math.random() * 340) + 10);
+            }
+            drawArray();
+        }
+
+        // 繪製目前的陣列狀態
+        // activeIndices: 正在比較的元素，mergeIndices: 正在合併寫入的元素
+        function drawArray(activeIndices = [], mergeIndices = []) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const barWidth = canvas.width / arraySize;
+
+            for (let i = 0; i < arraySize; i++) {
+                // 預設顏色
+                ctx.fillStyle = '#6c757d'; 
+
+                // 標記不同狀態的顏色
+                if (activeIndices.includes(i)) {
+                    ctx.fillStyle = '#dc3545'; // 紅色：正在比較
+                } else if (mergeIndices.includes(i)) {
+                    ctx.fillStyle = '#28a745'; // 綠色：正在合併
+                }
+
+                const barHeight = array[i];
+                ctx.fillRect(i * barWidth + 1, canvas.height - barHeight, barWidth - 2, barHeight);
+            }
+        }
+
+        // 延遲函數 (控制動畫速度)
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 開始排序的進入點
+        async function startMergeSort() {
+            if (isSorting) return;
+            isSorting = true;
+            generateBtn.disabled = true;
+            sortBtn.disabled = true;
+
+            await mergeSort(0, array.length - 1);
+
+            // 排序完成特效 (全部變綠)
+            drawArray([], Array.from({length: arraySize}, (_, i) => i));
+            
+            isSorting = false;
+            generateBtn.disabled = false;
+            sortBtn.disabled = false;
+        }
+
+        // 合併排序主邏輯 (遞迴)
+        async function mergeSort(left, right) {
+            if (left >= right) {
+                return;
+            }
+            const mid = left + Math.floor((right - left) / 2);
+            await mergeSort(left, mid);
+            await mergeSort(mid + 1, right);
+            await merge(left, mid, right);
+        }
+
+        // 合併兩個子陣列
+        async function merge(left, mid, right) {
+            let n1 = mid - left + 1;
+            let n2 = right - mid;
+            
+            let L = new Array(n1);
+            let R = new Array(n2);
+
+            for (let i = 0; i < n1; i++) L[i] = array[left + i];
+            for (let j = 0; j < n2; j++) R[j] = array[mid + 1 + j];
+
+            let i = 0, j = 0, k = left;
+
+            while (i < n1 && j < n2) {
+                const delay = parseInt(speedSlider.value);
+                drawArray([left + i, mid + 1 + j], [k]); // 標示正在處理的位置
+                await sleep(delay);
+
+                if (L[i] <= R[j]) {
+                    array[k] = L[i];
+                    i++;
+                } else {
+                    array[k] = R[j];
+                    j++;
+                }
+                k++;
+                drawArray([], [k - 1]);
+            }
+
+            // 處理剩餘的元素
+            while (i < n1) {
+                const delay = parseInt(speedSlider.value);
+                array[k] = L[i];
+                drawArray([left + i], [k]);
+                await sleep(delay);
+                i++;
+                k++;
+            }
+
+            while (j < n2) {
+                const delay = parseInt(speedSlider.value);
+                array[k] = R[j];
+                drawArray([mid + 1 + j], [k]);
+                await sleep(delay);
+                j++;
+                k++;
+            }
+            drawArray();
+        }
+
+        // 頁面載入時先產生一次陣列
+        window.onload = generateArray;
+    </script>
+</body>
+</html>
