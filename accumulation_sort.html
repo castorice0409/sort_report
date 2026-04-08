@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>堆積排序法動畫 (Heap Sort)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+        }
+        .controls {
+            margin-bottom: 20px;
+            background: white;
+            padding: 15px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        button {
+            cursor: pointer;
+            background-color: #0d6efd;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            padding: 10px 15px;
+            font-size: 16px;
+            transition: background-color 0.2s;
+        }
+        button:hover {
+            background-color: #0b5ed7;
+        }
+        button:disabled {
+            background-color: #a5c8fd;
+            cursor: not-allowed;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        canvas {
+            background: white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <button id="generateBtn" onclick="generateArray()">產生新陣列</button>
+        <button id="sortBtn" onclick="startHeapSort()">開始排序</button>
+        <div class="slider-container">
+            <label for="speedSlider">動畫速度:</label>
+            <input type="range" id="speedSlider" min="10" max="500" value="100" dir="rtl">
+        </div>
+    </div>
+
+    <canvas id="sortCanvas" width="800" height="400"></canvas>
+
+    <script>
+        const canvas = document.getElementById('sortCanvas');
+        const ctx = canvas.getContext('2d');
+        const generateBtn = document.getElementById('generateBtn');
+        const sortBtn = document.getElementById('sortBtn');
+        const speedSlider = document.getElementById('speedSlider');
+
+        let array = [];
+        const arraySize = 50;
+        let isSorting = false;
+        let sortedIndices = []; // 紀錄已經排好序的索引
+
+        // 產生隨機陣列
+        function generateArray() {
+            if (isSorting) return;
+            array = [];
+            sortedIndices = [];
+            for (let i = 0; i < arraySize; i++) {
+                // 產生 20 到 360 之間的高度
+                array.push(Math.floor(Math.random() * 340) + 20);
+            }
+            drawArray();
+        }
+
+        // 繪製陣列長條圖
+        function drawArray(activeIndices = []) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const barWidth = canvas.width / arraySize;
+
+            for (let i = 0; i < arraySize; i++) {
+                // 預設顏色：深灰色
+                ctx.fillStyle = '#6c757d'; 
+
+                if (sortedIndices.includes(i)) {
+                    // 已排序完成：綠色
+                    ctx.fillStyle = '#198754';
+                } else if (activeIndices.includes(i)) {
+                    // 正在比較或操作中：紅色
+                    ctx.fillStyle = '#dc3545';
+                }
+
+                const barHeight = array[i];
+                // 畫出長條圖，留出 1px 的間隙讓長條不沾黏
+                ctx.fillRect(i * barWidth + 1, canvas.height - barHeight, barWidth - 2, barHeight);
+            }
+        }
+
+        // 控制動畫延遲
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        // 開始堆積排序
+        async function startHeapSort() {
+            if (isSorting) return;
+            isSorting = true;
+            generateBtn.disabled = true;
+            sortBtn.disabled = true;
+            sortedIndices = [];
+
+            await heapSort();
+
+            // 確保最後畫面全綠
+            sortedIndices = Array.from({length: arraySize}, (_, i) => i);
+            drawArray();
+
+            isSorting = false;
+            generateBtn.disabled = false;
+            sortBtn.disabled = false;
+        }
+
+        // 堆積排序主邏輯
+        async function heapSort() {
+            let n = array.length;
+
+            // 步驟 1：建立最大堆積 (Build Max Heap)
+            // 從最後一個非葉子節點開始往前做 heapify
+            for (let i = Math.floor(n / 2) - 1; i >= 0; i--) {
+                await heapify(n, i);
+            }
+
+            // 步驟 2：逐步提取最大值並重新調整堆積
+            for (let i = n - 1; i > 0; i--) {
+                const delay = parseInt(speedSlider.value);
+                
+                // 標示準備交換的根節點(最大值)與最後一個節點
+                drawArray([0, i]);
+                await sleep(delay);
+
+                // 將目前最大值 (根節點) 與未排序區間的最後一個元素交換
+                let temp = array[0];
+                array[0] = array[i];
+                array[i] = temp;
+
+                // 紀錄該位置已排序完成
+                sortedIndices.push(i);
+                drawArray([0]); 
+                await sleep(delay);
+
+                // 陣列縮小 1 單位，並對新的根節點進行下沉 (heapify)
+                await heapify(i, 0);
+            }
+            
+            // 處理最後剩下的第一個元素
+            sortedIndices.push(0);
+        }
+
+        // 維持最大堆積特性的函數 (下沉操作)
+        async function heapify(n, i) {
+            let largest = i;          // 預設最大值為根節點
+            let left = 2 * i + 1;     // 左子節點的索引
+            let right = 2 * i + 2;    // 右子節點的索引
+
+            const delay = parseInt(speedSlider.value);
+
+            // 視覺化：標示正在檢查的父節點與子節點
+            let activeNodes = [i];
+            if (left < n) activeNodes.push(left);
+            if (right < n) activeNodes.push(right);
+            drawArray(activeNodes);
+            await sleep(delay);
+
+            // 如果左子節點大於目前最大值
+            if (left < n && array[left] > array[largest]) {
+                largest = left;
+            }
+
+            // 如果右子節點大於目前最大值
+            if (right < n && array[right] > array[largest]) {
+                largest = right;
+            }
+
+            // 如果最大值不是根節點，則需要交換
+            if (largest !== i) {
+                // 視覺化：標示即將交換的兩個節點
+                drawArray([i, largest]);
+                await sleep(delay);
+
+                let swap = array[i];
+                array[i] = array[largest];
+                array[largest] = swap;
+
+                // 視覺化：交換後的狀態
+                drawArray([i, largest]);
+                await sleep(delay);
+
+                // 遞迴地向下調整受影響的子樹
+                await heapify(n, largest);
+            }
+        }
+
+        // 網頁載入完成時，預先產生一組陣列
+        window.onload = generateArray;
+    </script>
+</body>
+</html>
