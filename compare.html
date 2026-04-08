@@ -13,7 +13,8 @@
         .race-track { display: flex; flex-direction: column; gap: 10px; }
         .algorithm-row { display: flex; align-items: center; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .info { width: 150px; font-weight: bold; }
-        .stats { width: 120px; font-size: 12px; color: #555; }
+        /* 加寬了統計區塊並調整行高，讓操作次數與時間能清楚顯示 */
+        .stats { width: 150px; font-size: 13px; color: #555; line-height: 1.4; } 
         canvas { flex-grow: 1; height: 80px; background: #fafafa; border: 1px solid #eee; border-radius: 4px; margin: 0 10px; }
     </style>
 </head>
@@ -114,6 +115,8 @@
         async function bubbleSort(id) {
             let arr = states[id].array;
             let n = arr.length;
+            let startTime = performance.now(); // 記錄開始時間
+
             for (let i = 0; i < n - 1; i++) {
                 for (let j = 0; j < n - i - 1; j++) {
                     states[id].ops++;
@@ -125,13 +128,17 @@
                 }
                 updateStats(id, "執行中...");
             }
+
+            let endTime = performance.now(); // 記錄結束時間
             drawArray(id);
-            updateStats(id, "完成！");
+            updateStats(id, `完成！\n動畫耗時: ${(endTime - startTime).toFixed(0)} ms`);
             document.getElementById(`row-${id}`).style.borderLeft = "5px solid #2ed573";
         }
 
         async function insertionSort(id) {
             let arr = states[id].array;
+            let startTime = performance.now();
+
             for (let i = 1; i < arr.length; i++) {
                 let key = arr[i];
                 let j = i - 1;
@@ -145,13 +152,17 @@
                 arr[j + 1] = key;
                 updateStats(id, "執行中...");
             }
+
+            let endTime = performance.now();
             drawArray(id);
-            updateStats(id, "完成！");
+            updateStats(id, `完成！\n動畫耗時: ${(endTime - startTime).toFixed(0)} ms`);
             document.getElementById(`row-${id}`).style.borderLeft = "5px solid #2ed573";
         }
 
         async function selectionSort(id) {
             let arr = states[id].array;
+            let startTime = performance.now();
+
             for (let i = 0; i < arr.length; i++) {
                 let minIdx = i;
                 for (let j = i + 1; j < arr.length; j++) {
@@ -165,16 +176,22 @@
                 }
                 updateStats(id, "執行中...");
             }
+
+            let endTime = performance.now();
             drawArray(id);
-            updateStats(id, "完成！");
+            updateStats(id, `完成！\n動畫耗時: ${(endTime - startTime).toFixed(0)} ms`);
             document.getElementById(`row-${id}`).style.borderLeft = "5px solid #2ed573";
         }
 
         async function mergeSortWrapper(id) {
             let arr = states[id].array;
+            let startTime = performance.now();
+            
             await mergeSort(arr, 0, arr.length - 1, id);
+            
+            let endTime = performance.now();
             drawArray(id);
-            updateStats(id, "完成！");
+            updateStats(id, `完成！\n動畫耗時: ${(endTime - startTime).toFixed(0)} ms`);
             document.getElementById(`row-${id}`).style.borderLeft = "5px solid #2ed573";
         }
 
@@ -207,6 +224,8 @@
         async function heapSort(id) {
             let arr = states[id].array;
             let n = arr.length;
+            let startTime = performance.now();
+
             for (let i = Math.floor(n / 2) - 1; i >= 0; i--) await heapify(arr, n, i, id);
             for (let i = n - 1; i > 0; i--) {
                 states[id].ops++;
@@ -216,8 +235,10 @@
                 await heapify(arr, i, 0, id);
                 updateStats(id, "執行中...");
             }
+
+            let endTime = performance.now();
             drawArray(id);
-            updateStats(id, "完成！");
+            updateStats(id, `完成！\n動畫耗時: ${(endTime - startTime).toFixed(0)} ms`);
             document.getElementById(`row-${id}`).style.borderLeft = "5px solid #2ed573";
         }
 
