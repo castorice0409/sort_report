@@ -3,21 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>排序演算法複雜度動畫</title>
+    <title>排序演算法複雜度動畫 (修復升級版)</title>
     <style>
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; margin: 0; padding: 20px; display: flex; flex-direction: column; align-items: center; }
-        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 800px; }
+        .container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); width: 850px; }
         .controls { display: flex; justify-content: center; gap: 15px; margin-bottom: 20px; }
         button { padding: 10px 20px; font-size: 16px; cursor: pointer; border: none; border-radius: 6px; font-weight: bold; transition: 0.2s; }
         .btn-time { background-color: #ffeaa7; color: #d63031; border: 2px solid #d63031; }
         .btn-space { background-color: #81ecec; color: #0984e3; border: 2px solid #0984e3; }
-        button:hover { filter: brightness(0.9); }
-        .layout { display: flex; gap: 20px; }
-        canvas { background: #fff; border: 1px solid #dfe6e9; border-radius: 8px; }
+        button:hover { filter: brightness(0.9); transform: translateY(-2px); }
+        .layout { display: flex; gap: 20px; align-items: flex-start; }
+        /* 設定 canvas 溢出隱藏，讓破表的曲線被乾淨地裁切 */
+        .canvas-container { border: 1px solid #dfe6e9; border-radius: 8px; background: #fff; overflow: hidden; position: relative; }
+        canvas { display: block; }
         .legend { flex-grow: 1; padding: 15px; background: #fdfbfb; border-radius: 8px; border: 1px solid #eee; }
         .legend h3 { margin-top: 0; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
-        .legend-item { margin-bottom: 15px; line-height: 1.5; }
+        .legend-item { margin-bottom: 15px; line-height: 1.5; font-size: 15px;}
         .color-box { display: inline-block; width: 16px; height: 16px; margin-right: 8px; vertical-align: middle; border-radius: 3px; }
+        .alert-box { background: #ffeaa7; padding: 10px; border-radius: 6px; font-size: 13px; color: #d35400; font-weight: bold; margin-top: 10px;}
     </style>
 </head>
 <body>
@@ -31,11 +34,13 @@
         </div>
 
         <div class="layout">
-            <canvas id="graphCanvas" width="500" height="400"></canvas>
+            <div class="canvas-container">
+                <canvas id="graphCanvas" width="500" height="400"></canvas>
+            </div>
             
             <div class="legend" id="legendBox">
-                <h3>請點擊上方按鈕開始動畫</h3>
-                <p>這裡將顯示演算法與曲線的對應關係。</p>
+                <h3>請點擊上方按鈕開始</h3>
+                <p>觀察當資料量 (N) 增加時，不同演算法的效能表現差異。</p>
             </div>
         </div>
     </div>
@@ -48,9 +53,20 @@
 
         const maxN = 100; // X軸最大資料量
         
-        // 繪製座標軸
+        // 繪製座標軸與背景網格
         function drawAxes(yMax, yLabel) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // 畫淺色背景網格
+            ctx.strokeStyle = '#f1f2f6';
+            ctx.lineWidth = 1;
+            for(let i=1; i<10; i++) {
+                ctx.beginPath();
+                ctx.moveTo(50, 400 - i*40);
+                ctx.lineTo(480, 400 - i*40);
+                ctx.stroke();
+            }
+
             ctx.strokeStyle = '#2d3436';
             ctx.lineWidth = 2;
             ctx.beginPath();
@@ -62,10 +78,10 @@
             ctx.lineTo(canvas.width - 20, canvas.height - 40);
             ctx.stroke();
 
-            // 標籤
+            // 標籤設定
             ctx.fillStyle = '#2d3436';
             ctx.font = '14px Arial';
-            ctx.fillText("資料量 (N)", canvas.width / 2, canvas.height - 10);
+            ctx.fillText("資料量 N (0 ~ 100)", canvas.width / 2 - 40, canvas.height - 10);
             
             ctx.save();
             ctx.translate(20, canvas.height / 2 + 50);
@@ -75,55 +91,121 @@
 
             // 刻度
             ctx.fillText("0", 35, canvas.height - 25);
-            ctx.fillText(maxN, canvas.width - 30, canvas.height - 20);
+            ctx.fillText(yMax, 15, 30); // 標示 Y 軸最高點
         }
 
-        // 動畫繪製曲線
+        // 動畫核心邏輯 (重構為每幀重繪完整路徑)
         function animateCurves(curves, yMax, yLabel) {
             cancelAnimationFrame(animationId);
-            drawAxes(yMax, yLabel);
-
-            let currentN = 1;
+            let currentN = 0;
             const drawOriginX = 50;
             const drawOriginY = canvas.height - 40;
             const scaleX = (canvas.width - 70) / maxN;
             const scaleY = (canvas.height - 60) / yMax;
 
             function draw() {
-                if (currentN > maxN) return;
+                drawAxes(yMax, yLabel);
 
                 curves.forEach(curve => {
                     ctx.strokeStyle = curve.color;
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = 4;
+                    ctx.lineJoin = 'round'; // 讓折線轉折處平滑
                     ctx.beginPath();
                     
-                    // 從上一個點連到目前點
-                    let prevVal = curve.fn(currentN - 1);
-                    let currVal = curve.fn(currentN);
-                    
-                    ctx.moveTo(drawOriginX + (currentN - 1) * scaleX, drawOriginY - prevVal * scaleY);
-                    ctx.lineTo(drawOriginX + currentN * scaleX, drawOriginY - currVal * scaleY);
+                    // 從原點開始畫
+                    ctx.moveTo(drawOriginX, drawOriginY);
+
+                    // 畫出從 1 到 currentN 的完整曲線
+                    for (let x = 1; x <= currentN; x++) {
+                        let y = curve.fn(x);
+                        ctx.lineTo(drawOriginX + x * scaleX, drawOriginY - y * scaleY);
+                    }
                     ctx.stroke();
+
+                    // 畫一個小圓點代表目前的推進位置
+                    let currentY = curve.fn(currentN);
+                    let renderY = drawOriginY - currentY * scaleY;
+                    
+                    // 只有當圓點還在圖表可視範圍內才畫它 (處理破表的情況)
+                    if (renderY > 0) {
+                        ctx.fillStyle = curve.color;
+                        ctx.beginPath();
+                        ctx.arc(drawOriginX + currentN * scaleX, renderY, 6, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
                 });
 
-                currentN += 0.5; // 動畫速度
-                animationId = requestAnimationFrame(draw);
+                // 動畫推進：每次增加 1
+                if (currentN < maxN) {
+                    currentN += 1;
+                    animationId = requestAnimationFrame(draw);
+                }
             }
             draw();
         }
 
         function playTimeComplexity() {
-            // Y軸最大值設定為 100^2 = 10000
-            const yMax = Math.pow(maxN, 2); 
+            // Y軸最大值設定為 800
+            // N=100時，O(n^2) 是 10000 (會直接衝破天花板！)
+            // N=100時，O(n log n) 約是 664 (會剛好在圖表頂端範圍內)
+            const yMax = 800; 
             
             legendBox.innerHTML = `
-                <h3>時間複雜度 (Time Complexity)</h3>
+                <h3>時間複雜度 (Time)</h3>
                 <div class="legend-item">
                     <span class="color-box" style="background:#d63031;"></span>
-                    <b>O(n²) 拋物線</b><br>
-                    氣泡排序、插入排序、選擇排序<br>
-                    <small>資料量變大時，耗時會呈現恐怖的倍數成長。</small>
+                    <b>O(n²) 紅線</b><br>
+                    <small>氣泡、插入、選擇排序</small>
                 </div>
                 <div class="legend-item">
                     <span class="color-box" style="background:#0984e3;"></span>
-                    <b>O(n log n
+                    <b>O(n log n) 藍線</b><br>
+                    <small>合併、堆積排序</small>
+                </div>
+                <div class="alert-box">
+                    💡 破表注意：<br>
+                    圖表 Y 軸上限設為 800。你會看到紅線 (O(n²)) 在 N 剛過 28 時就失控衝破圖表；而藍線卻能穩定維持在範圍內。這就是高階演算法的威力！
+                </div>
+            `;
+
+            const curves = [
+                { color: '#d63031', fn: (n) => Math.pow(n, 2) }, // O(n^2)
+                { color: '#0984e3', fn: (n) => n * Math.log2(n || 1) } // O(n log n)
+            ];
+
+            animateCurves(curves, yMax, "操作次數");
+        }
+
+        function playSpaceComplexity() {
+            // Y軸最大值設定為 100 (因為 O(n) 最大就是 N=100)
+            const yMax = 100; 
+
+            legendBox.innerHTML = `
+                <h3>空間複雜度 (Space)</h3>
+                <div class="legend-item">
+                    <span class="color-box" style="background:#00b894;"></span>
+                    <b>O(n) 綠線</b><br>
+                    <small>合併排序 (Merge Sort)</small><br>
+                    <small style="color:#555;">為了解決合併，需要額外產生跟資料一樣大的陣列，所以呈對角線成長。</small>
+                </div>
+                <div class="legend-item">
+                    <span class="color-box" style="background:#fdcb6e;"></span>
+                    <b>O(1) 黃線</b><br>
+                    <small>氣泡、插入、選擇、堆積</small><br>
+                    <small style="color:#555;">只需極少固定變數即可完成排序，不管資料多少，線永遠是平的！</small>
+                </div>
+            `;
+
+            const curves = [
+                { color: '#00b894', fn: (n) => n }, // O(n)
+                { color: '#fdcb6e', fn: (n) => 2 }  // O(1) 稍微畫高一點避免貼齊邊緣
+            ];
+
+            animateCurves(curves, yMax, "額外記憶體空間");
+        }
+
+        // 初始畫面
+        drawAxes(100, "圖表初始化");
+    </script>
+</body>
+</html>
